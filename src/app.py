@@ -5,17 +5,46 @@ A super simple FastAPI application that allows students to view and sign up
 for extracurricular activities at Mergington High School.
 """
 
-from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+import json
 import os
+import secrets
 from pathlib import Path
+
+from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="Mergington High School API",
               description="API for viewing and signing up for extracurricular activities")
 
-# Mount the static files directory
+TEACHER_SESSIONS = {}
 current_dir = Path(__file__).parent
+teacher_store_path = current_dir / "teachers.json"
+
+
+def load_teachers():
+    with teacher_store_path.open("r", encoding="utf-8") as file:
+        data = json.load(file)
+    return data.get("teachers", [])
+
+
+def get_teacher_from_token(authorization: str | None = Header(default=None)):
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    parts = authorization.split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise HTTPException(status_code=401, detail="Invalid authorization header")
+
+    token = parts[1]
+    teacher = TEACHER_SESSIONS.get(token)
+    if not teacher:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    return teacher
+
+
+# Mount the static files directory
 app.mount("/static", StaticFiles(directory=os.path.join(Path(__file__).parent,
           "static")), name="static")
 
@@ -88,9 +117,45 @@ def get_activities():
     return activities
 
 
+@app.post("/admin/login")
+def login_admin(username: str, password: str):
+    """Authenticate a teacher and issue a session token."""
+    teachers = load_teachers()
+    matched_teacher = next(
+        (teacher for teacher in teachers
+         if teacher.get("username") == username and teacher.get("password") == password),
+        None,
+    )
+
+    if matched_teacher is None:
+        raise HTTPException(status_code=401, detail="Invalid teacher credentials")
+
+    token = secrets.token_urlsafe(32)
+    TEACHER_SESSIONS[token] = username
+    return {"message": "Logged in successfully", "teacher": username, "token": token}
+
+
+@app.post("/admin/logout")
+def logout_admin(authorization: str | None = Header(default=None)):
+    teacher = get_teacher_from_token(authorization)
+    for token, value in list(TEACHER_SESSIONS.items()):
+        if value == teacher:
+            del TEACHER_SESSIONS[token]
+            break
+    return {"message": "Logged out successfully"}
+
+
+@app.get("/admin/me")
+def get_current_teacher(authorization: str | None = Header(default=None)):
+    teacher = get_teacher_from_token(authorization)
+    return {"teacher": teacher}
+
+
 @app.post("/activities/{activity_name}/signup")
-def signup_for_activity(activity_name: str, email: str):
-    """Sign up a student for an activity"""
+def signup_for_activity(activity_name: str, email: str, authorization: str | None = Header(default=None)):
+    """Register a student for an activity. Teacher-only access."""
+    get_teacher_from_token(authorization)
+
     # Validate activity exists
     if activity_name not in activities:
         raise HTTPException(status_code=404, detail="Activity not found")
@@ -111,8 +176,10 @@ def signup_for_activity(activity_name: str, email: str):
 
 
 @app.delete("/activities/{activity_name}/unregister")
-def unregister_from_activity(activity_name: str, email: str):
-    """Unregister a student from an activity"""
+def unregister_from_activity(activity_name: str, email: str, authorization: str | None = Header(default=None)):
+    """Unregister a student from an activity. Teacher-only access."""
+    get_teacher_from_token(authorization)
+
     # Validate activity exists
     if activity_name not in activities:
         raise HTTPException(status_code=404, detail="Activity not found")
