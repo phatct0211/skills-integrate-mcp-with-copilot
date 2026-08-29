@@ -15,17 +15,51 @@ body {
   background-color: #f5f5f5;
 }
 
-header {
-  text-align: center;
-  padding: 20px 0;
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 24px;
   margin-bottom: 30px;
   background-color: #1a237e;
   color: white;
   border-radius: 5px;
 }
 
-header h1 {
+.topbar h1 {
   margin-bottom: 10px;
+}
+
+.admin-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-button,
+.secondary-button {
+  background-color: #ffffff;
+  color: #1a237e;
+  border: none;
+  padding: 10px 15px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.secondary-button {
+  background-color: #e5e7eb;
+  color: #333;
+}
+
+.user-badge {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: bold;
 }
 
 main {
@@ -162,6 +196,42 @@ button {
 
 button:hover {
   background-color: #3949ab;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-note {
+  margin-bottom: 16px;
+  color: #4b5563;
+  font-size: 15px;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.modal-content {
+  background: white;
+  width: min(420px, 90vw);
+  border-radius: 10px;
+  padding: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
 }
 
 .message {
